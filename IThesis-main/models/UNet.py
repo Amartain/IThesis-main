@@ -1,3 +1,12 @@
+"""
+Module for defining the  classic U-Net architecture.
+
+    This modole contains the blocks needed to define a U-Net architecture, 
+    including Encoder and Decoder Blocks.
+    To solve segmentation problems like skeletonization. 
+
+    **Important diversion from original U-Net paper**: `same` padding is used for easier tensor shape management!
+"""
 import torch
 from torch import manual_seed, nn, cat
 
@@ -10,23 +19,14 @@ PADDING = "same"
 OUT_CHANNELS = 32 # doubled w/ every down! this is where we start!!!!!
 
 
-
-
-
-
-
-# ## Model Architecture [9]
-# - Encoder - Downsampling
-#     - CONV BLOCK >> DOWNSAMPLE (maxpool) & 2x channels >> next conv block >> down...
-#     - saves convoluted output BEFORE maxpool every time because we will do skip connections with it !
-#     - 2x CHANNELS after each conv block 
-#     - PADDING: make so it remains the SAME SIZE! - saves headache
-
-
-
 class CNNBlock(nn.Module):
+    """
+    Standard double convolutional block with two layers of consequtive convolutional blocks.
+
+        Both conv blocks are followed by `BatchNorm2d` and `ReLU` for training stability.
+    """
     
- def __init__(self, input_channels=1, out_channels=OUT_CHANNELS, kernel_size=KERNEL_SIZE, padding=PADDING):
+    def __init__(self, input_channels=1, out_channels=OUT_CHANNELS, kernel_size=KERNEL_SIZE, padding=PADDING):
         super().__init__()
     
         self.conv_block = nn.Sequential(
@@ -49,7 +49,15 @@ class CNNBlock(nn.Module):
         )
 
 
- def forward(self, x):
+    def forward(self, x):
+        """
+         Executes forward path through the convolutional block.
+        **Args**:
+            `x` (`torch.Tensor`): Input tensor.
+
+        **Returns**:
+            `torch.Tensor`: Output tensor.
+        """
         x = self.conv_block(x)
         x = self.conv_block2(x)
         return x
@@ -57,6 +65,11 @@ class CNNBlock(nn.Module):
 
 
 class EncoderBlock(nn.Module):
+    """ Block for the encoder path.
+
+        Made out of double convolutional blocks (CNN Block)
+        and a max pooling layer which cuts the dimensions in half.
+    """
     def __init__(self, input_channels=1, out_channels=OUT_CHANNELS, kernel_size=KERNEL_SIZE, padding=PADDING):
         super().__init__()
         
@@ -78,11 +91,16 @@ class EncoderBlock(nn.Module):
 
 
 class DecoderBlock(nn.Module):
+    """
+    The Block of Decoder path.
+
+    Uses transposed convolution for the dubbling of dimensions, skip connections from the encoder path,
+    and CNN Blocks.
+    """
     def __init__(self, input_channels, out_channels, kernel_size=KERNEL_SIZE, padding=PADDING):
         super().__init__()
-                # out channels SAME cause - this output will be CONCAT w/ feature map >> double >> ...
+
         self.up_conv = nn.ConvTranspose2d(in_channels=input_channels, out_channels=out_channels, kernel_size=POOL_TRANSPOSE_KERNEL_SIZE, stride=STRIDE)
-        # input channels remain the same cause CONCAT >> 2xout_channels => input_channels again!
         self.conv_block = CNNBlock(input_channels, out_channels, kernel_size, padding)
 
 # - Connecting paths
@@ -90,6 +108,17 @@ class DecoderBlock(nn.Module):
 #         - cat places convoluted image at that stage ALONGSIDE the decoded features!
 
     def forward(self, x, feature_map):
+        """
+        Executes forward pass throuhg decoder block.
+            
+            **Args**:
+                `x` (`torch.Tensor`): Coarse resolution output tensor from deeper layers.
+                `feature_map` (`torch.Tensor`): Higher resolution feature map from the encoder path.
+
+            **Returns**:
+                `torch.Tensor`: Output tensor.
+        """
+
         x = self.up_conv(x)
         x = cat((feature_map,x),dim=1)
         x = self.conv_block(x) 
@@ -99,12 +128,19 @@ class DecoderBlock(nn.Module):
 
 
 class UNet(nn.Module):
+    """
+    U-Net (RAUNet) for binary segmentation. 
+        The architecture consist of 4 encoders, a bridge block, 4 decoders and a prediction layer with Sigmoid.
+
+    **Important diversion from original U-Net paper**: `same` padding is used for easier tensor shape management!
+    """
+
     def __init__(self, input_channels=1, kernel_size=KERNEL_SIZE, padding=PADDING):
         super().__init__()
 
         # Encoder / Down 
-        # defaul start in: 1 then 16 > 32 > 64 > 128
-        # DOUBLE out_channels every block!
+        # defaul start in: 1 -> 32 -> 64 -> 128 -> 256
+        # DOUBLEs out_channels every block!
         self.encoder_block1 = EncoderBlock(input_channels,OUT_CHANNELS)
         self.encoder_block2 = EncoderBlock(input_channels=OUT_CHANNELS, out_channels=OUT_CHANNELS*2)
         self.encoder_block3 = EncoderBlock(input_channels=OUT_CHANNELS*2, out_channels=OUT_CHANNELS*4)
@@ -112,20 +148,18 @@ class UNet(nn.Module):
 
         # Bridge
         # - Bottleneck / Bridge - no Pool
-#     - so regular ass convolution w/o pool - so just use CNNBlock class
-        # in channels default - 128 > 256
+        # in channels default -256 -> 512
         self.bridge = CNNBlock(input_channels=OUT_CHANNELS*8, out_channels=OUT_CHANNELS*16, kernel_size=kernel_size, padding=padding)
 
         # Decoder / Up
-        # start channel default 256 > 128 > 64 > 32 > 16
-        # HALF start channel every block
+        # start channel default 512 -> 256 -> 128 -> 64 -> 32
+        # HALVES start channel every block
         self.decoder_block1 = DecoderBlock(input_channels=OUT_CHANNELS*16, out_channels=OUT_CHANNELS*8)
         self.decoder_block2 = DecoderBlock(input_channels=OUT_CHANNELS*8, out_channels=OUT_CHANNELS*4)
         self.decoder_block3 = DecoderBlock(input_channels=OUT_CHANNELS*4, out_channels=OUT_CHANNELS*2)
         self.decoder_block4 = DecoderBlock(input_channels=OUT_CHANNELS*2, out_channels=OUT_CHANNELS)
 
         # Final Prediction layer
-        # - OUT: convolution final time w/o w/ SIGMOID for binary image segmentation
         self.prediction = nn.Sequential(
             nn.Conv2d(in_channels=OUT_CHANNELS, out_channels=1, kernel_size=(1,1),padding=PADDING),
             nn.Sigmoid()
@@ -133,6 +167,14 @@ class UNet(nn.Module):
 
 # let PyTorch __call__ handle the magic apperantly 
     def forward(self, x):
+        """
+        Executes forward pass through U-Net network.
+            **Args**:
+                `x` (`torch.Tensor`): Input image tensor (1 channel, binary image).
+
+            **Returns**:
+                `torch.Tensor`: The predicted binary segmentation map (probability values between 0-1!) because Sigmoid is applied!.
+        """
 
         # Encoder / Down
         x, feature_map_1 = self.encoder_block1(x)
