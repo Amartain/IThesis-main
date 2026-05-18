@@ -251,6 +251,4 @@ def train_model(model, device,  optimizer, train_loader, val_loader, loss_functi
         "Validation Accuracy F1":epoch_val_dice
         })
     
-
-
     return model
