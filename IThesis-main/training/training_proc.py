@@ -1,25 +1,42 @@
+"""
+Module containing functions responsible for training and validating PyTorch models.
+
+This module contains the functions for:
+    - main training loop
+    - training and validation epochs
+    - image grid makers for TensorBoard logging
+"""
+
 import torch
 from torchvision.utils import make_grid
 from monai.metrics import DiceHelper
 
 
-
-
 def training_epoch(model, device, loss_function, optimizer, train_loader):
+    """
+    Executes single training epoch on the given model.
+
+    The function iterates over the training loader (`train_loader`), executes the forward pass, calculates loss and Dice score, backpropagation and optimizer step. Collects the first batch's data for visualization and all the epoch's data for logging.
+
+    **Args**: 
+        `model` (`torch.nn.Module`): Neural network to be trained.
+        `device` (`torch.device`): The device (CPU or Cuda (GPU)) on which to run the training.
+        `loss_function` (callable): The function to calculate the loss between the target tensor and model output.
+        `train_loader` (`torch.utils.data.DataLoader`): The dataloader loading the training data.
+
+    **Returns**: 
+        `epoch_loss` (`float`): Avarage epoch loss.
+        `epoch_dice` (`float`): Avarage epoch Dice Score.
+        `first_batch` (`tuple`): The first batch's data (original image, skeleton ground truth, model prediction) for visualization. 
+    """
+    
     epoch_loss = 0
     running_loss = 0.0
-    # running_f1 = 0.0
     running_dice = 0.0
 
-    # prev. epoch ends w/ .eval() mode because of the validation epoch so reset
+    # prev. epoch might end wtih .eval() mode if it was a validation epoch  
     model.train()
 
-    
-
-
-    # I return thumbs and labels too but I actually don't care about it during training!
-     # later TODO: - make monitoring by labels see which label is accessed how many times! - maybe graph distributions?
-    y_distr = []
     
     # used for passing up first batch for visualization!
     batch_count = 0
@@ -29,27 +46,16 @@ def training_epoch(model, device, loss_function, optimizer, train_loader):
         # data setup
         x = originals.to(device)
         y = skeletons.to(device)
-       # print("x min max", x.min(), x.max())
-      #  print("y min max", y.min(), y.max())
-        # 1.s vs. 0.s
-        *_, val_counts = y.unique(return_counts=True) 
-        
-        count_0, count_1 = val_counts[0].item() / len(x), val_counts[1].item() / len(x)
-       # print("VALCOUNTS: 0., 1.", count_0, count_1)
-        distr = count_1 / count_0
-        y_distr.append(distr)
 
         # forward pass
         optimizer.zero_grad()
-      #  print("X shape", x.size())
 
         output = model(x)
-
 
         # backward pass
         loss = loss_function(output, y)
 
-      # metrics & for tensorboard
+        # metrics & for tensorboard
         if batch_count == 0:
             first_batch = (
                originals.cpu(),
@@ -57,20 +63,16 @@ def training_epoch(model, device, loss_function, optimizer, train_loader):
                output.detach().cpu()
             )
 
-        # calculating f1 score for the batch
         dice_score = DiceHelper(include_background=True, reduction='mean', get_not_nans=False, sigmoid=True)(output, y).item()
-        # target = y.round().long()
-        # tp, fp, fn, tn = metrics.get_stats(output, target, mode='binary', threshold=0.5)
-        # f1 = metrics.f1_score(tp, fp, fn, tn, reduction='micro').item()
-        # running_f1 += f1 * len(x)
+
         running_dice += dice_score * len(x)
 
         loss.backward()
 
         optimizer.step()
 
-        # Accumulative LOSS
-        running_loss += loss.item() * len(x) # avarage out w/ batch_size to ensure same weight for all
+        # unequal batch sizes
+        running_loss += loss.item() * len(x) 
 
         batch_count += 1
 
@@ -80,17 +82,33 @@ def training_epoch(model, device, loss_function, optimizer, train_loader):
     return epoch_loss, epoch_dice, first_batch
 
 def val_epoch(model, device, loss_function, val_loader):
+    """
+    Executes single validation epoch on the given model.
+
+    The function after setting the model into evaluation mode it iterates over the validation data loader (`val_loader`), and without calculating gradients calculates the validation loss and Dice Score. 
+    The goal of the validation epoch is to measure the model's generalization ability during training. 
+    
+    **Args**: 
+    `model` (`torch.nn.Module`): Model to be validated.
+    `device` (`torch.device`): The device (CPU or cuda device (GPU)) to do the validation on.
+    `loss_function` (`callable`): The function to calculate the loss between the model's outputs and the target.
+    `val_loader` (`torch.utils.data.DataLoader`): The loader loading the validation data. 
+    
+    **Returns**: 3 element `tuple`:
+        - `epoch_val_loss` (`float`): The epoch's average validation loss.
+        - `epoch_dice` (`float`): The epoch's average validation Dice Score.
+        - `first_batch` (`tuple`): The data of the first validation batch (original image, skeleton ground truth, prediction) for visualization.
+    """
     running_loss = 0.0
-    #running_f1 = 0.0
     running_dice = 0.0
     batch_count = 0
-    # set model to eval!
+
+
     model.eval()
 
 
-    # no need for grad.
     with torch.no_grad():
-        # I will only care about thumbs and labels when doing visual analysis...
+        # During this phase we don't need labels, or thumbs
         for originals, skeletons, *_ in val_loader:
             x = originals.to(device)
             y = skeletons.to(device)
@@ -99,7 +117,7 @@ def val_epoch(model, device, loss_function, val_loader):
             
             loss = loss_function(output, y)
 
-                # for tensorboard
+            # for tensorboard
             if batch_count == 0:
                 first_batch = (
                 originals.cpu(),
@@ -107,18 +125,10 @@ def val_epoch(model, device, loss_function, val_loader):
                 output.detach().cpu()
                 )
 
-            # calculating batch f1 score
             dice = DiceHelper(include_background=True, get_not_nans=False, sigmoid=True)(output, y).item()
-
-            # target = y.round().long()
-            # tp, fp, fn, tn = metrics.get_stats(output, target, mode='binary', threshold=0.5)
-            # f1 = metrics.f1_score(tp, fp, fn, tn, reduction='micro').item()
-            # running_f1 += f1 * len(x)
             running_dice += dice * len(x)
 
-
             running_loss += loss.item() * len(x)
-
 
     epoch_val_loss = running_loss / len(val_loader.dataset)
     epoch_dice = running_dice / len(val_loader.dataset)
@@ -128,10 +138,21 @@ def val_epoch(model, device, loss_function, val_loader):
 
 def make_image_grid(image_batch):
     """
-    image_batch - tuple (original image, ground_truth_image, model_output) ON CPU already!
+    Concatanotes and makes a grid of the images for TensorBoard visualization.
+
+    Concatonates the original image, the skeleton ground truth and the model output into a single image channel through dim 3. 
+
+    **Args**: 
+        `image_batch` (`tuple`): A tuple composing of three tensors (original image, skeleton ground truth, model output).
+        **Warning**: The tensors must already be on the CPU!
+    
+    **Returns**:
+        `torch.Tensor`: Single tensor image organized into a grid using the `torchvision` `make_grid` function.
+
     """
     imgs, gt_imgs, ypreds = image_batch
     
+    # concetonating images in the width dimension 
     cat_images = torch.cat((imgs, gt_imgs, ypreds), dim=3)
     
     return make_grid(cat_images, nrow=1)
@@ -139,6 +160,31 @@ def make_image_grid(image_batch):
 
 
 def train_model(model, device,  optimizer, train_loader, val_loader, loss_function, writer,  no_epochs, early_stop, batch_size):
+    """
+    Executes full training loop with intra training validation on the given model.
+
+    This function is responsible for managing the training process.
+        -  Every epoch it runs the training epoch.
+        - Every 5 epochs runs a validation epoch. 
+        - Manages the early stopping conditions to avoid overfitting.
+        - Logs metrics and image data to TensorBoard.
+
+    **Args**:
+        `model` (`torch.nn.Module`): Model to be validated.
+        `device` (`torch.device`): The device (CPU or cuda device (GPU)) to do the validation on.
+        `optimizer` (`torch.optim.Optimizer`): The optimizer responsible for updating model weights.
+        `train_loader` (`torch.utils.data.DataLoader`): The dataloader loading the training data.
+        `val_loader` (`torch.utils.data.DataLoader`): The loader loading the validation data. 
+        `loss_function` (`callable`): The function to calculate the loss between the model's outputs and the target.
+        `writer` (`SummaryWriter`): The TensorBoard writer object to log training metrics and results.
+        `no_epochs` (`int`): Number of maximum training epochs.
+        `early_stop` (`int`): Tolerance for early stop, counted in validation peridos. (Validation occurs every 5 epochs)
+        `batch_size` (`int`): Batch size for data loading.
+
+    **Returns**:
+        `torch.nn.Module`: The trained model.
+    """    
+    
     step = 0
     stop = 0
     best_val_acc = 0
@@ -179,13 +225,13 @@ def train_model(model, device,  optimizer, train_loader, val_loader, loss_functi
             print("Validation Dice Score", epoch_val_dice)
             print("_"*80)
 
-            # visual stuff to tensorboard
+            # TensorBoard (visuals)
             writer.add_image("Training", make_image_grid(train_1st_batch), global_step=step)
             writer.add_image("Validation", make_image_grid(val_1st_batch), global_step=step)
             
 
 
-        # TensorBoard
+        # TensorBoard (metrics)
         writer.add_scalars("Train vs Validation Loss", {"Training Loss": epoch_train_loss, "Validation Loss": epoch_val_loss}, global_step=step)
         writer.add_scalars("Training vs Validation DICE", {"Training Dice":epoch_train_dice, "Validation Dice":epoch_val_dice}, global_step=step)
 

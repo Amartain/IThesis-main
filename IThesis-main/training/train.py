@@ -34,16 +34,16 @@ def setup_training(dataset_choice, size_filter, batch_size, no_workers, model_ch
         - saves model weights
 
     **Args**: 
-        `dataset_choice` (Enum): The `DatasetSelection` key for the dataset wished to be used.
-        `size_filter` (int): Maximum dimension for the images used during training.
-        `batch_size` (int): Batch size for data loading.
-        `no_workers` (int): The number of workers (parallel threads) used by the data loaders.
-        `model_choice` (Enum): The `ModelSelection` key for the model wished to be trained.
-        `lr_choice` (float): The learning rate for the optimizer.
-        `no_epochs` (int): Number of maximum training epochs.
-        `early_stop` (int): Tolerance for early stop, counted in validation peridos. (Validation occurs every 5 epochs)    
-        `writer` (SummaryWriter): The TensorBoard writer object to log training metrics and results.
-        `model_path` (str): The path and the filename to which the saved model (state dict) will be saved.
+        `dataset_choice` (`Enum`): The `DatasetSelection` key for the dataset wished to be used.
+        `size_filter` (`int`): Maximum dimension for the images used during training.
+        `batch_size` (`int`): Batch size for data loading.
+        `no_workers` (`int`): The number of workers (parallel threads) used by the data loaders.
+        `model_choice` (`Enum`): The `ModelSelection` key for the model wished to be trained.
+        `lr_choice` (`float`): The learning rate for the optimizer.
+        `no_epochs` (`int`): Number of maximum training epochs.
+        `early_stop` (`int`): Tolerance for early stop, counted in validation peridos. (Validation occurs every 5 epochs)    
+        `writer` (`SummaryWriter`): The TensorBoard writer object to log training metrics and results.
+        `model_path` (`str`): The path and the filename to which the saved model (state dict) will be saved.
 
     **Returns**:
         None
