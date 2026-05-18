@@ -1,3 +1,16 @@
+"""
+Configuration module for choosing the parameters for deep learning experiments.
+
+Ez a modul felsorolásokat (Enum) tartalmaz az adathalmazok, modellek és 
+veszteségfüggvények kiválasztásához, valamint leképezéseket (dictionary), 
+amelyek ezeket az enumerációs értékeket a megfelelő osztályok példányosítását 
+végző paraméter nélküli (lambda) függvényekhez rendelik.
+
+The module contains:
+    - `Enum`s for datasets, models and loss function selection
+    - maps (`dictionary`) that use these enums to map these to lambda functions that instantiate these classes.
+"""
+
 import monai.losses
 
 from enum import Enum, auto
@@ -7,6 +20,12 @@ from models.RAUNet import RAUNet
 
 
 class DatasetSelection(Enum):
+    """
+    Enumeration of the available datasets.
+
+    This class defines the identifiers for the different datasets that can be used for training and evaluation.
+    Using `auto()` python automatically assigns unique value to these enums.
+    """   
     KIMIA99 = auto()
     KIMIA216 = auto()
     MPEG400 = auto()
@@ -14,6 +33,11 @@ class DatasetSelection(Enum):
     ANIMAL2000 = auto()
 
 class ModelSelection(Enum):
+    """
+    Enumeration of the available models.
+
+    This class defines the identifiers for the different models that can be used for training and evaluation.
+    """ 
     UNET = "U-Net"
     BUNET = "BatchNorm U-Net"
     RUNET = "Residual U-Net"
@@ -21,6 +45,11 @@ class ModelSelection(Enum):
     RAUNET = "Residual Attention U-Net"
 
 class LossSelection(Enum):
+    """
+    Enumeration of the available loss functions.
+
+    This class defines the identifiers for the different loss functions that can be used for training and evaluation.
+    """  
     DICE = "DiceLoss"
     DICECE = "DiceCELoss (1 x BCE + 1 x Dice)"
     FOCAL = "FocalLoss"
@@ -39,7 +68,7 @@ MODEL_MAP = {
 LOSS_MAP = {
     LossSelection.DICE : lambda: monai.losses.DiceLoss(),
     LossSelection.DICECE : lambda: monai.losses.DiceCELoss(),
-    LossSelection.FOCAL : lambda: monai.losses.FocalLoss(skip_this_function=True),
+    LossSelection.FOCAL : lambda: monai.losses.FocalLoss(),
     LossSelection.DICEFOCAL : lambda: monai.losses.DiceFocalLoss(),
-    LossSelection.CLDICE : lambda: monai.losses.SoftDiceclDiceLoss(alpha=0.5)
+    LossSelection.CLDICE : lambda: monai.losses.SoftDiceclDiceLoss()
 }
