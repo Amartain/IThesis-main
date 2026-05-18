@@ -1,0 +1,43 @@
+import torch
+
+from data.paths import get_dataset_dirs
+from configurations.selection import MODEL_MAP
+from data.pipeline import get_train_val_test_loaders, get_test_dataset_loader
+from evaluation.evaluation_proc import evaluate_model
+
+# device setup
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Evaluating on {device}")
+
+
+def setup_evaluation(model_path, model_choice, dataset_choice, test_dataset, size_filter, batch_size, no_workers, writer):
+    print("Evaluation Started With Parameters: ")
+    print(dataset_choice, size_filter, batch_size, no_workers)
+
+    print(f"Model To Be tested: {model_path}")
+
+
+    print("0. INIT MODEL")
+    print("_"*80)
+
+    model = MODEL_MAP[model_choice]()
+    model.to(device)
+
+    model.load_state_dict(torch.load(model_path, weights_only=True))
+    
+
+    print("2. Setting up DATALOADERs")
+    print("_"*80)
+    if test_dataset:
+        test_loader = get_test_dataset_loader(dataset_choice, batch_size, size_filter)
+    else:
+        *_, test_loader = get_train_val_test_loaders(dataset_choice=dataset_choice, batch_size=batch_size, size_filter=size_filter, no_workers=no_workers)
+        print(f"Testing on {len(test_loader.dataset)} images.")
+    
+
+    print("3. STARTING TESTING")
+    print("_"*80)
+    evaluate_model(model=model, device=device, test_loader=test_loader, writer=writer)
+    
+    
+    

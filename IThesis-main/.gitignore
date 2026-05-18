@@ -1,0 +1,5 @@
+datasets
+runs
+train_all.sh
+logs
+models/saved
