@@ -1,4 +1,10 @@
+"""
+Main entry point for training and model evaluation.
 
+This script is responsible for parsing the command line interface (CLI) arguments (args),
+setting the configurations for training and evaluation. Depending on whether the user chooses
+training or evaluation mode the script calls for the appropiate next step with the set configurations.
+"""
 
 import argparse
 from torch.utils.tensorboard import SummaryWriter
@@ -7,7 +13,7 @@ import configurations.selection as selection
 from training.train import setup_training
 from evaluation.evaluate import setup_evaluation
 
-# data 
+# Default data configuration 
 BATCH_SIZE = 4
 NO_WORKERS = 12
 SIZE_FILTER = 160
@@ -15,16 +21,16 @@ DATASET = selection.DatasetSelection.KIMIA99
 # model
 LOSS = selection.LossSelection.DICECE
 
-# training
+# Default training configurations
 NO_EPOCHS = 200
 EARLY_STOP = 3
 LR_RATE = 1e-4
 
-# logging
+# Logging directory paths
 TRAINING_LOGS_PATH =  'runs/training_logs'
 TEST_LOGS_PATH =  'runs/test_logs'
 
-
+# Defining command-line arguments
 parser = argparse.ArgumentParser()
 
 parser.add_argument('-e', '--evaluation', type=str, help='Set to evaluation mode with path to trained and saved model.')
@@ -48,26 +54,36 @@ if args.loss == 'CLDICE' or args.loss == 'FOCAL':
     sys.exit(0)
 
 def start():
-    # training mode
+    """
+    Calls for setup of training or evalution based on the CLI args.
 
+    `args` : The configuration parameters are taken from the global `args` object.
+            If `args.evaluation` parameter is empty the program is executes in training mode and the appropiate `setup_training()` function is called.
+            Else (if 'args.evaluation' is defined) the program is set to evalutation mode and and the appropiate `setup_evaluation()` function is called.
 
+    **Notes**:
+        This function doesn't take any arguments and doesn't return any value it works solely by using the global `args` object.    
+    """
+    
+    # Training Mode
     if args.evaluation is None:
         print("Training Mode")
         
         # Configuration
-        # data
+        # Data
         dataset_choice = selection.DatasetSelection[args.dataset]
         size_filter = args.size_filter
         batch_size = args.batch_size
         no_workers = args.no_workers
-        # model
+        # Model
         model_choice = selection.ModelSelection[args.model]
         loss_choice = selection.LossSelection[args.loss]
-        # training 
+        # Training parameters
         no_epochs = args.no_epochs
         early_stop = args.early_stop
         lr_choice = args.learning_rate
 
+        # Logging setup
         writer = SummaryWriter(f"{TRAINING_LOGS_PATH}/{model_choice.name}/{dataset_choice.name}_{size_filter}/{loss_choice.name}")
         model_save_path = f'models/saved/{model_choice.name}_{loss_choice.name}_{dataset_choice.name}-{size_filter}_{no_epochs}epochs.pth'
 
@@ -81,17 +97,18 @@ def start():
         print("Evaluation mode")
 
         # Configuration
-        # data
+        # Data
         dataset_choice = selection.DatasetSelection[args.dataset]
         test_dataset = args.test_dataset
         size_filter = args.size_filter
         batch_size = args.batch_size
         no_workers = args.no_workers
         
-        # model
+        # Model
         model_choice = selection.ModelSelection[args.model]
         model_path = args.evaluation
 
+        # Logging setup
         writer = SummaryWriter(f"{TEST_LOGS_PATH}/{model_choice.name}/{dataset_choice.name}_size_filter")
 
         setup_evaluation(model_path, model_choice, dataset_choice, test_dataset, size_filter, batch_size, no_workers, writer)
