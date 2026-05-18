@@ -26,7 +26,7 @@ def setup_training(dataset_choice, size_filter, batch_size, no_workers, model_ch
     Prepares environment and executes model training.
 
     This function:
-        -  initializes `torch.manual_seed` with `RANDOM_SEED` configured in the `configurations.configure` script.
+        -  initializes `torch.manual_seed` with `RANDOM_SEED` configured in the `configurations.conf` module.
         -  sets up data loaders
         - instantiates chosen model and loss functions
         - sets up Adam optimizer for training
