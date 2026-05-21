@@ -55,6 +55,7 @@ class LossSelection(Enum):
     FOCAL = "FocalLoss"
     DICEFOCAL = "DiceFocalLoss"
     CLDICE = "clDICE"
+    DICECLDICE = "Dice + clDice"
 
 
 MODEL_MAP = {
@@ -70,5 +71,7 @@ LOSS_MAP = {
     LossSelection.DICECE : lambda: monai.losses.DiceCELoss(),
     LossSelection.FOCAL : lambda: monai.losses.FocalLoss(),
     LossSelection.DICEFOCAL : lambda: monai.losses.DiceFocalLoss(),
-    LossSelection.CLDICE : lambda: monai.losses.SoftDiceclDiceLoss()
+    LossSelection.CLDICE : lambda: monai.losses.SoftclDiceLoss(),
+    LossSelection.DICECLDICE : lambda: monai.losses.SoftDiceclDiceLoss()
+
 }

@@ -35,11 +35,11 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('-e', '--evaluation', type=str, help='Set to evaluation mode with path to trained and saved model.')
 parser.add_argument('-m', '--model', choices=['UNET', 'BUNET', 'RUNET', 'AUNET', 'RAUNET'], required=True, help='Define model to be used. MUST be defined.')
-parser.add_argument('-ds', '--dataset', choices=['KIMIA99', 'KIMIA216', 'MPEG400', 'MPEG7', 'ANIMAL2000', 'SWLEAF'], default=DATASET.name, help='Define the dataset to be used. Defaults to Kimai99.')
+parser.add_argument('-ds', '--dataset', choices=['KIMIA99', 'KIMIA216', 'MPEG400', 'MPEG7', 'ANIMAL2000'], default=DATASET.name, help='Define the dataset to be used. Defaults to Kimai99.')
 parser.add_argument('--no_workers', type=int, default=NO_WORKERS ,help='Define max number of workers for the data loaders. Defaults to 4.')
 parser.add_argument('--batch_size', type=int, default=BATCH_SIZE, help='Define batch size(s). Defaults to 4.')
 parser.add_argument('--size_filter', type=int, default=SIZE_FILTER, help='Max image dimension on any side. Defaults to 160 for Kimia, for other datasets higher resolution is recommended.')
-parser.add_argument('--loss', default=LOSS.name, choices=['DICE', 'FOCAL', 'DICECE','DICEFOCAL', 'CLDICE'], help='Define loss function to be used for training, defaults to DiceCE loss.')
+parser.add_argument('--loss', default=LOSS.name, choices=['DICE', 'FOCAL', 'DICECE','DICEFOCAL', 'CLDICE', 'DICECLDICE'], help='Define loss function to be used for training, defaults to DiceCE loss.')
 parser.add_argument('--no_epochs', type=int, default=NO_EPOCHS ,help='Define max number epochs. Defaults to 20.')
 parser.add_argument('--early_stop', type=int, default=EARLY_STOP ,help='Define max number epoch tolerance for no improvement in validation accuracy. Defaults to 3. Validation done every 5 epochs and thus 3 means 15 epoch tolerance.')
 parser.add_argument('-lr', '--learning_rate', type=float, default=LR_RATE, help='Define learning rate for Adam optimizer. Default 1e-4')
@@ -48,10 +48,6 @@ parser.add_argument('--test_dataset', nargs=1, type=bool, default=False,help='Se
 
 args = parser.parse_args()
 
-if args.loss == 'CLDICE' or args.loss == 'FOCAL':
-    import sys
-    print("Exit due to CLDICE / FOCAL loss use.")
-    sys.exit(0)
 
 def start():
     """

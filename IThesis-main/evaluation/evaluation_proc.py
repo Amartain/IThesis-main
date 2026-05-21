@@ -50,7 +50,7 @@ def evaluate_model(model, device, test_loader, writer):
                 output.detach().cpu()
                 )
 
-            dice = DiceHelper(include_background=True, reduction='mean', get_not_nans=False, sigmoid=True)(output, y).item()
+            dice = DiceHelper(include_background=True, reduction='mean', get_not_nans=False, threshold=True)(output, y).item()
 
             running_dice += dice * len(x)
             total_samples += len(x)

@@ -10,6 +10,9 @@ This module contains the functions for:
 import torch
 from torchvision.utils import make_grid
 from monai.metrics import DiceHelper
+import monai.losses
+
+from configurations.selection import LossSelection
 
 
 def training_epoch(model, device, loss_function, optimizer, train_loader):
@@ -63,7 +66,7 @@ def training_epoch(model, device, loss_function, optimizer, train_loader):
                output.detach().cpu()
             )
 
-        dice_score = DiceHelper(include_background=True, reduction='mean', get_not_nans=False, sigmoid=True)(output, y).item()
+        dice_score = DiceHelper(include_background=True, reduction='mean', get_not_nans=False, threshold=True)(output, y).item()
 
         running_dice += dice_score * len(x)
 
@@ -114,8 +117,14 @@ def val_epoch(model, device, loss_function, val_loader):
             y = skeletons.to(device)
 
             output = model(x)
-            
-            loss = loss_function(output, y)
+
+
+            if  isinstance(loss_function, (monai.losses.SoftclDiceLoss, monai.losses.SoftDiceclDiceLoss)):
+                output_ohe = torch.cat((1-output, output), dim=1)
+                y_ohe = torch.cat((1-y, y), dim=1)
+                loss = loss_function(output_ohe, y_ohe)
+            else:
+                loss = loss_function(output, y)
 
             # for tensorboard
             if batch_count == 0:
@@ -125,7 +134,7 @@ def val_epoch(model, device, loss_function, val_loader):
                 output.detach().cpu()
                 )
 
-            dice = DiceHelper(include_background=True, get_not_nans=False, sigmoid=True)(output, y).item()
+            dice = DiceHelper(include_background=True, get_not_nans=False, threshold=True)(output, y).item()
             running_dice += dice * len(x)
 
             running_loss += loss.item() * len(x)
