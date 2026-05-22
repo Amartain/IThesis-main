@@ -29,6 +29,7 @@ LR_RATE = 1e-4
 # Logging directory paths
 TRAINING_LOGS_PATH =  'runs/training_logs'
 TEST_LOGS_PATH =  'runs/test_logs'
+TEST_DATASET = 0
 
 # Defining command-line arguments
 parser = argparse.ArgumentParser()
@@ -43,7 +44,7 @@ parser.add_argument('--loss', default=LOSS.name, choices=['DICE', 'FOCAL', 'DICE
 parser.add_argument('--no_epochs', type=int, default=NO_EPOCHS ,help='Define max number epochs. Defaults to 20.')
 parser.add_argument('--early_stop', type=int, default=EARLY_STOP ,help='Define max number epoch tolerance for no improvement in validation accuracy. Defaults to 3. Validation done every 5 epochs and thus 3 means 15 epoch tolerance.')
 parser.add_argument('-lr', '--learning_rate', type=float, default=LR_RATE, help='Define learning rate for Adam optimizer. Default 1e-4')
-parser.add_argument('--test_dataset', nargs=1, type=bool, default=False,help='Set dataset mode to test only, meaning the whole dataset will be used for evaluation! Use only for unseen datasets!')
+parser.add_argument('--test_dataset', nargs=1, type=int, default=0,help='Set dataset mode to test only with 1 - defaults to 0, meaning the whole dataset will be used for evaluation! Use only for unseen datasets!')
 
 
 args = parser.parse_args()
@@ -105,7 +106,7 @@ def start():
         model_path = args.evaluation
 
         # Logging setup
-        writer = SummaryWriter(f"{TEST_LOGS_PATH}/{model_choice.name}/{dataset_choice.name}_size_filter")
+        writer = SummaryWriter(f"{TEST_LOGS_PATH}/{model_choice.name}/{model_path}/{dataset_choice.name}_size_filter")
 
         setup_evaluation(model_path, model_choice, dataset_choice, test_dataset, size_filter, batch_size, no_workers, writer)
 

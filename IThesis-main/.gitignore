@@ -3,3 +3,8 @@ runs
 train_all.sh
 logs
 models/saved
+training\__pycache__
+evaluation\__pycache__
+data\__pycache__
+configurations\__pycache__
+models\__pycache__

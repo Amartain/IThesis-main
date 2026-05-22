@@ -53,7 +53,7 @@ def setup_evaluation(model_path, model_choice, dataset_choice, test_dataset, siz
 
     print("2. Setting up DATALOADERs")
     print("_"*80)
-    if test_dataset:
+    if test_dataset == 1:
         test_loader = get_test_dataset_loader(dataset_choice, batch_size, size_filter)
     else:
         *_, test_loader = get_train_val_test_loaders(dataset_choice=dataset_choice, batch_size=batch_size, size_filter=size_filter, no_workers=no_workers)
